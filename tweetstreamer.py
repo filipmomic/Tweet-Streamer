@@ -65,7 +65,7 @@ def connect_target_table(tableName):
     
     session = boto3.Session(region_name='us-west-1',
                         aws_access_key_id=aws_access_id,
-                        aws_secret_access_key=AWS_SECRET_ACCESS_KEY)
+                        aws_secret_access_key=aws_secret_access_key)
     ddb = session.resource('dynamodb')
     table = ddb.Table(tableName)
     
