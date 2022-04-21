@@ -1,16 +1,12 @@
-import requests
-import json
 from dotenv import load_dotenv
 import os
-import tweepy
 import config
-import boto3
+import requests
+import json
+import tweepy
+import dynamo_db_conn as dyn_db
 
 load_dotenv()
-
-def get_secret(secretName):
-    # Authenticate to Twitter API V2. Stored in .env file.
-    return os.getenv(secretName)
         
 class TweetListener(tweepy.StreamingClient):
     #Inherits from tweepy.StreamingClient class
@@ -36,6 +32,7 @@ class TweetListener(tweepy.StreamingClient):
         
         content = {}
         content['tweet_id'] = int(json_data['data']['id']) #table key
+        content['rule_matched'] = json_data['matching_rules']
         content['created_at'] = json_data['data']['created_at']
         content['text'] = json_data['data']['text']
 
@@ -58,39 +55,28 @@ class TweetListener(tweepy.StreamingClient):
         
     def on_response(self, response):
         print("Recieved response:", str(response))
-
-def connect_target_table(tableName):
-    aws_access_id = get_secret('ACCESSKEYID')
-    aws_secret_access_key = get_secret('SECRETKEY')
-    
-    session = boto3.Session(region_name='us-west-1',
-                        aws_access_key_id=aws_access_id,
-                        aws_secret_access_key=AWS_SECRET_ACCESS_KEY)
-    ddb = session.resource('dynamodb')
-    table = ddb.Table(tableName)
-    
-    return table
  
 def create_stream_rules(objList, lang):
     # Create a list of tweepy.StreamRules objects to pass into StreamingClient
     
     streamRuleList = []
     for obj in objList:
-        ruleStr = obj + ' lang:' + lang
-        streamRuleList.append(tweepy.StreamRule(value=ruleStr))
+        ruleStr = obj['rule'] + ' lang:' + lang
+        streamRuleList.append(tweepy.StreamRule(value=ruleStr, tag=obj['tag']))
         
     return streamRuleList   
 
 if __name__ == '__main__':
     #db connection
-    dynamo_table = connect_target_table('tweetstreamer')
+    dynamo_table = dyn_db.connect_dynamo_table('tweetstreamer')
     
-    secret = get_secret('BEARERTOKEN')
+    secret = os.getenv('BEARERTOKEN')
     client = TweetListener(bearer_token=secret, target_table=dynamo_table, max_retries=3, max_tweets=5)
     
     # Add stream rules to reduce listening events (tweets)
     streamRules = create_stream_rules(config.objects, config.language)
     client.add_rules(add=streamRules)
     
+    #start stream
     client.filter(tweet_fields=['created_at'])
     
