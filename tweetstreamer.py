@@ -33,6 +33,7 @@ class TweetListener(tweepy.StreamingClient):
         content = {}
         content['tweet_id'] = int(json_data['data']['id']) #table key
         content['rule_matched'] = json_data['matching_rules']
+        content['tag'] = json_data['matching_rules'][0]['tag'] #dictionary containing rule id and tag, retrieving just tag
         content['created_at'] = json_data['data']['created_at']
         content['text'] = json_data['data']['text']
 
