@@ -26,17 +26,18 @@ df = pd.DataFrame(json.loads(data))
 #run sentiment analysis
 s = SentimentIntensityAnalyzer()
 df["sentiment_scores"] = df["text"].apply(lambda x: x.replace('@','')).apply(lambda x: s.polarity_scores(x)['compound']) #for compopund, 1 = positive, -1 = negative sentiment
+df = df.rename(columns={'tag': 'tag_name'}) #tag is an invalid column name, so had to rename it
 
 #write dataframe to AWS RDS: Postgresql
-host = 'twitter-cars-stream-1.cu24gjcelr46.us-west-1.rds.amazonaws.com'
-port = '5432'
+host = 'redshift-cluster-1.cvb9znd4tdrw.us-west-1.redshift.amazonaws.com'
+port = '5439'
 username = os.getenv("POSTGRES_USER")
 password = os.getenv("POSTGRES_PASSWORD")
 db = os.getenv("POSTGRES_DB")
 
 conn_string = f'postgres://{username}:{password}@{host}:{port}/{db}'
 engine = create_engine(conn_string)
-df.to_sql('twitter_cars_sentiment', conn_string, index=False, if_exists='replace')
+df.to_sql('cars_sentiment', conn_string, index=False, if_exists='append') #if_exist='replace' doesn't work bc limit of 250char for auto schema detect, I manually specified the schema
 
 #delete out all data from dynamodb that is older than last run to keep db small in size
 
