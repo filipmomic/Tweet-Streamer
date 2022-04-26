@@ -27,9 +27,10 @@ df = pd.DataFrame(data)
 #run sentiment analysis
 s = SentimentIntensityAnalyzer()
 df["sentiment_scores"] = df["text"].apply(lambda x: x.replace('@','')).apply(lambda x: s.polarity_scores(x)['compound']) #for compopund, 1 = positive, -1 = negative sentiment
+
 df = df.drop(labels='rule_matched', axis=1)
 
-print(df)
+#print(df)
 
 #write dataframe to AWS RDS: Postgresql
 try:
