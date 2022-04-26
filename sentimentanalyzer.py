@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 import boto3
 import dynamo_db_conn as dyn_db
 import pandas as pd
-from dynamodb_json import json_util as json
+import json as json
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 from sqlalchemy import create_engine
 
@@ -20,23 +20,30 @@ while 'LastEvaluatedKey' in response:
     data.extend(response['Items'])
 
 #process them into a dataframe (from json)
-df = pd.DataFrame(json.loads(data))
+df = pd.DataFrame(data)
 
+#print(df)
 
 #run sentiment analysis
 s = SentimentIntensityAnalyzer()
 df["sentiment_scores"] = df["text"].apply(lambda x: x.replace('@','')).apply(lambda x: s.polarity_scores(x)['compound']) #for compopund, 1 = positive, -1 = negative sentiment
+df = df.drop(labels='rule_matched', axis=1)
+
+print(df)
 
 #write dataframe to AWS RDS: Postgresql
-host = 'twitter-cars-stream-1.cu24gjcelr46.us-west-1.rds.amazonaws.com'
-port = '5432'
-username = os.getenv("POSTGRES_USER")
-password = os.getenv("POSTGRES_PASSWORD")
-db = os.getenv("POSTGRES_DB")
+try:
+    host = 'tweet-streamer.cu24gjcelr46.us-west-1.rds.amazonaws.com'
+    port = '5432'
+    username = os.getenv("POSTGRES_USER")
+    password = os.getenv("POSTGRES_PASSWORD")
+    db = os.getenv("POSTGRES_DB")
 
-conn_string = f'postgres://{username}:{password}@{host}:{port}/{db}'
-engine = create_engine(conn_string)
-df.to_sql('twitter_cars_sentiment', conn_string, index=False, if_exists='replace')
+    conn_string = f'postgres://{username}:{password}@{host}:{port}/{db}'
+    engine = create_engine(conn_string)
+    df.to_sql('twitter_cars_sentiment', conn_string, index=False, if_exists='replace')
+except Exception as e:
+    print(str(e))
 
 #delete out all data from dynamodb that is older than last run to keep db small in size
 
