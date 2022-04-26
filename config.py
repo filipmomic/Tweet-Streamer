@@ -11,6 +11,18 @@ objects = [
         'rule': 'audi -is:retweet',
         'tag': 'audi'
      },
+    {
+        'rule': 'tesla -is:retweet',
+        'tag': 'tesla'
+     },
+    {
+        'rule': 'lucid motors-is:retweet',
+        'tag': 'lucid'
+     },
+    {
+        'rule': 'porsche -is:retweet',
+        'tag': 'porsche'
+     }
 ]
 
 language = 'en'

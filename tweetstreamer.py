@@ -1,6 +1,8 @@
 from dotenv import load_dotenv
 import os
 import config
+import time
+import stock_scraper as stock_scr
 import requests
 import json
 import tweepy
@@ -29,7 +31,7 @@ class TweetListener(tweepy.StreamingClient):
         json_data = json.loads(raw_data)
         
         #print(json_data) #testing
-        
+
         content = {}
         content['tweet_id'] = int(json_data['data']['id']) #table key
         content['rule_matched'] = json_data['matching_rules']
@@ -57,27 +59,41 @@ class TweetListener(tweepy.StreamingClient):
     def on_response(self, response):
         print("Recieved response:", str(response))
  
-def create_stream_rules(objList, lang):
+def create_stream_rules(objList):
     # Create a list of tweepy.StreamRules objects to pass into StreamingClient
     
     streamRuleList = []
     for obj in objList:
-        ruleStr = obj['rule'] + ' lang:' + lang
+        ruleStr = obj['rule'] + ' lang: en'
+        print(obj)
         streamRuleList.append(tweepy.StreamRule(value=ruleStr, tag=obj['tag']))
         
     return streamRuleList   
 
 if __name__ == '__main__':
-    #db connection
-    dynamo_table = dyn_db.connect_dynamo_table('tweetstreamer')
+    cycles = 0
+    tickers = stock_scr.get_stock_tickers()
     
-    secret = os.getenv('BEARERTOKEN')
-    client = TweetListener(bearer_token=secret, target_table=dynamo_table, max_retries=3, max_tweets=5)
-    
-    # Add stream rules to reduce listening events (tweets)
-    streamRules = create_stream_rules(config.objects, config.language)
-    client.add_rules(add=streamRules)
-    
-    #start stream
-    client.filter(tweet_fields=['created_at'])
-    
+    while True:
+        
+        #db connection
+        dynamo_table = dyn_db.connect_dynamo_table('tweetstreamer')
+        
+        secret = os.getenv('BEARERTOKEN')
+        client = TweetListener(bearer_token=secret, target_table=dynamo_table, max_retries=3, max_tweets=5)
+        
+        # Add stream rules to reduce listening events (tweets)
+        streamRules = create_stream_rules(tickers[0:3])
+        print(streamRules)
+        client.add_rules(add=streamRules)
+        
+        client.get_rules()
+        
+        #start stream
+        client.filter(tweet_fields=['created_at'])
+
+        cycles += 1
+        print(f"Cycle {cycles} completed. Pausing for 5 mins...")
+        time.sleep(30)
+        
+        
